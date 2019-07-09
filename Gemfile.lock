@@ -179,6 +179,7 @@ DEPENDENCIES
   rack-cors
   rails (~> 5.2.2)
   rspec-rails
+  rubocop (~> 0.72.0)
   rubocop-performance
   rubocop-rspec
   spring
