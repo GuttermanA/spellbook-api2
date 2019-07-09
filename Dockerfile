@@ -1,19 +1,37 @@
 FROM ruby:2.6.3
-RUN apt-get update -qq && apt-get install -y nodejs postgresql-client
-RUN mkdir /spellbook-api2
-WORKDIR /spellbook-api2
-COPY Gemfile /spellbook-api2/Gemfile
-COPY Gemfile.lock /spellbook-api2/Gemfile.lock
-RUN gem install bundler
-RUN bundle install
-COPY . /spellbook-api2
 
-# Add a script to be executed every time the container starts.
-# COPY entrypoint.sh /usr/bin/
-# COPY entrypoint.sh /spellbook-api2
-RUN chmod +x /spellbook-api2/entrypoint.sh
-CMD ./entrypoint.sh
+# Install apt based dependencies required to run Rails as
+# well as RubyGems. As the Ruby image itself is based on a
+# Debian image, we use apt-get to install those.
+RUN apt-get update && apt-get install -y \
+  build-essential \
+  nodejs
+
+# Configure the main working directory. This is the base
+# directory used in any further RUN, COPY, and ENTRYPOINT
+# commands.
+RUN mkdir -p /app
+WORKDIR /app
+
+# Copy the Gemfile as well as the Gemfile.lock and install
+# the RubyGems. This is a separate step so the dependencies
+# will be cached unless changes to one of those two files
+# are made.
+COPY Gemfile Gemfile.lock ./
+RUN gem install bundler && bundle install --jobs 20 --retry 5
+
+# Copy the main application.
+COPY . ./
+
+# Expose port 3000 to the Docker host, so we can access it
+# from the outside.
 EXPOSE 3000
 
-# Start the main process.
+# Configure an entry point, so we don't need to specify
+# "bundle exec" for each of our commands.
+ENTRYPOINT ["bundle", "exec"]
+
+# The main command to run when the container starts. Also
+# tell the Rails dev server to bind to all interfaces by
+# default.
 CMD ["rails", "server", "-b", "0.0.0.0"]
